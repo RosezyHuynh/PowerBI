@@ -1,0 +1,48 @@
+with t0 as(
+  SELECT*
+  FROM `project-baotran-2023.my_dataset.E-commerce-Dataset`
+  where extract(year from order_date) = 2018
+),
+--SELECT* FROM t0
+t1 as(
+  SELECT order_date,customer_id, sales,  DATE_TRUNC(order_date, MONTH) as order_month
+  from t0
+),
+--SELECT* FROM t1
+t2 as(
+  SELECT customer_id, date_trunc(MIN(Order_date),month) as cohort_month
+  from t0
+  GROUP BY customer_id
+),
+--SELECT* FROM t2
+t3 as(
+  SELECT t1.*, t2.cohort_month, date_diff(cast(t1.order_month as date), cast(t2.cohort_month as date),month)+1 as CohortIndex
+  FROM t1
+  join t2 on t1.customer_id = t2.customer_id
+),
+-- SELECT* FROM t3 
+  t4 as(
+  SELECT Cohort_Month, order_month, cohortindex, count(distinct customer_id) as count_cusID
+  FROM t3
+  group by cohort_month, order_month, CohortIndex
+)
+--SELECT* FROM t4
+, t4_2 as(
+  SELECT Cohort_Month, order_month, cohortIndex, sum(sales) as total_sales
+  FROM t3
+  GROUP BY cohort_month, order_month, cohortindex
+)
+--SELECT* FROM t4_2
+, t5 as(
+  SELECT*
+  FROM
+  (
+    SELECT cohort_month, cohortindex, count_cusid
+    from t4
+  )
+  pivot(
+    SUM(count_cusid)
+    for cohortindex in (1,2,3,4,5,6,7,8,9,10,11,12)
+  ) as piv
+  )
+SELECT* FROM t5
